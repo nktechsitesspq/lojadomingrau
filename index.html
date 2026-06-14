@@ -323,9 +323,17 @@ function monitorarSenha(){
    const atual=sess();
    if(!atual?.telefone) return;
 
-   // Se a sessão antiga não tem senha salva, salva a senha atual do Firebase e continua logado
+   // Se a sessão antiga não tem senha salva, força sair para entrar novamente
    if(!atual.senha && dados.senha){
-     localStorage.setItem("domingrauCliente",JSON.stringify({telefone:atual.telefone,senha:dados.senha}));
+     localStorage.removeItem("domingrauCliente");
+     document.body.innerHTML=`
+       <div style="position:fixed;inset:0;background:#07070b;display:flex;align-items:center;justify-content:center;padding:20px;z-index:999999;color:white;font-family:Arial">
+        <div style="background:#141421;border:1px solid #39344f;border-radius:28px;padding:28px;max-width:520px;width:100%;text-align:center;box-shadow:0 0 40px #8b35ff33">
+          <h2 style="font-size:34px;margin:0 0 12px;color:#ef4444">Sessão encerrada</h2>
+          <p style="font-size:18px;color:#c5bfd1;line-height:1.4">Entre novamente com sua senha.</p>
+          <button onclick="location.reload()" style="background:linear-gradient(135deg,#8b35ff,#ca55ff);color:white;border:0;border-radius:18px;padding:15px 22px;font-weight:900;font-size:16px">Entrar novamente</button>
+        </div>
+       </div>`;
      return;
    }
 
@@ -352,7 +360,7 @@ onSnapshot(collection(db,"categorias"),snap=>{
  atualizarCategorias(extras);
 },err=>console.log("Erro categorias:",err));
 
-onSnapshot(collection(db,"produtos"),async snap=>{let agora=Date.now();produtos=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.criadoMs||0)-(a.criadoMs||0));for(let p of produtos){if(typeof p.expiraEm==="number"&&p.expiraEm>0&&p.expiraEm<=agora)try{await deleteDoc(doc(db,"produtos",p.id))}catch(e){}}window.__produtosDomingrau=produtos;render()},err=>{$("grid").innerHTML='<div class="empty">Erro ao carregar. Confira regras do Firestore.</div>';console.log(err)});
+onSnapshot(collection(db,"produtos"),snap=>{let agora=Date.now();produtos=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.criadoMs||0)-(a.criadoMs||0));window.__produtosDomingrau=produtos;render()},err=>{$("grid").innerHTML='<div class="empty">Erro ao carregar. Confira regras do Firestore.</div>';console.log(err)});
 </script>
 
 <script>
