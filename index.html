@@ -95,6 +95,99 @@ body{
   overflow-x:hidden!important;
 }
 
+
+/* GRID 2 ANÚNCIOS POR LINHA NO CELULAR */
+.grid{
+  display:grid!important;
+  grid-template-columns:repeat(2, minmax(0,1fr))!important;
+  gap:12px!important;
+}
+.card{
+  border-radius:18px!important;
+}
+.card img{
+  height:140px!important;
+}
+.cardBody{
+  padding:12px!important;
+}
+.card h3{
+  font-size:17px!important;
+  line-height:1.15!important;
+  margin-bottom:6px!important;
+  display:-webkit-box!important;
+  -webkit-line-clamp:2!important;
+  -webkit-box-orient:vertical!important;
+  overflow:hidden!important;
+}
+.price{
+  font-size:21px!important;
+  line-height:1.1!important;
+}
+.meta{
+  font-size:13px!important;
+  line-height:1.35!important;
+}
+.row{
+  grid-template-columns:1fr!important;
+  gap:8px!important;
+}
+.row a,.row button{
+  padding:11px 6px!important;
+  font-size:13px!important;
+  border-radius:12px!important;
+}
+.expiraBadge{
+  font-size:10px!important;
+  padding:6px 6px!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  max-width:100%!important;
+  width:100%!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:3px!important;
+  line-height:1!important;
+}
+@media(min-width:768px){
+  .grid{
+    grid-template-columns:repeat(3, minmax(0,1fr))!important;
+    gap:16px!important;
+  }
+  .card img{height:190px!important}
+  .card h3{font-size:22px!important}
+  .price{font-size:28px!important}
+  .row{grid-template-columns:1fr 1fr!important}
+}
+@media(min-width:1200px){
+  .grid{
+    grid-template-columns:repeat(4, minmax(0,1fr))!important;
+  }
+}
+
+
+/* CORREÇÃO FINAL - TEMPO DE EXPIRAR EM UMA LINHA */
+.expiraBadge{
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  max-width:100%!important;
+  width:100%!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:3px!important;
+  line-height:1!important;
+}
+@media(max-width:720px){
+  .expiraBadge{
+    font-size:10px!important;
+    padding:6px 5px!important;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -173,8 +266,8 @@ if(usuarioDoc.exists()){
  }
 }
 let files=[...$("fotos").files];if(!$("nome").value.trim()||!$("valor").value.trim()||!$("categoria").value||!$("cidade").value.trim()||!$("bairro").value.trim()||!$("vendedor").value.trim()||!$("desc").value.trim())return toast("Preencha todos os campos.");if(files.length<1)return toast("Escolha pelo menos 1 foto.");if(files.length>5)return toast("Máximo 5 fotos.");publicando=true;$("btnPublicar").disabled=true;$("btnPublicar").textContent="Publicando...";try{let imgs=[];for(let f of files)imgs.push(await comprimir(f));await addDoc(collection(db,"produtos"),{nome:$("nome").value.trim(),valor:$("valor").value.trim(),categoria:$("categoria").value,cidade:$("cidade").value.trim(),bairro:$("bairro").value.trim(),whatsapp:u.telefone,vendedor:$("vendedor").value.trim(),desc:$("desc").value.trim(),fotos:imgs,foto:imgs[0],dono:u.telefone,criadoMs:Date.now(),expiraEm:Date.now()+3*24*60*60*1000,criadoEm:serverTimestamp()});toast("Anúncio publicado!");limparFechar()}catch(e){console.log(e);toast("Erro ao publicar. Use fotos menores.")}finally{publicando=false;$("btnPublicar").disabled=false;$("btnPublicar").textContent="Publicar anúncio"}}
-function render(){let termo=$("busca").value.toLowerCase().trim(),agora=Date.now();let arr=produtos.filter(p=>(!p.expiraEm||typeof p.expiraEm!=="number"||p.expiraEm>agora));if(filtro!="Todos")arr=arr.filter(p=>p.categoria==filtro);if(termo)arr=arr.filter(p=>(p.nome||"").toLowerCase().includes(termo)||(p.cidade||"").toLowerCase().includes(termo)||(p.categoria||"").toLowerCase().includes(termo));if(!arr.length){$("grid").innerHTML='<div class="empty">Nenhum anúncio encontrado.</div>';return}$("grid").innerHTML=arr.map(p=>`<div class="card"><img src="${p.foto||""}"><div class="cardBody"><h3>${p.nome||""}</h3><div class="price">${moeda(p.valor)}</div><div class="meta"><div>Categoria: ${p.categoria||""}</div><div>Cidade: ${p.cidade||""}</div><div>Vendedor: ${p.vendedor||""}</div><div class="expiraBadge" data-expira="${p.expiraEm||0}">⏳ Expira em ${tempo(p.expiraEm)}</div></div><div class="row"><a class="btn green" target="_blank" href="https://wa.me/55${clean(p.whatsapp)}?text=${encodeURIComponent("Olá, vi seu anúncio: "+(p.nome||""))}">WhatsApp</a><button class="btn alt" data-info="${p.id}">Ver informações</button></div></div></div>`).join("");document.querySelectorAll("[data-info]").forEach(b=>b.onclick=()=>detalhes(b.dataset.info))}
-function detalhes(id){let p=produtos.find(x=>x.id==id);if(!p)return;let fs=p.fotos?.length?p.fotos:(p.foto?[p.foto]:[]);$("detNome").textContent=p.nome||"";$("detValor").textContent=moeda(p.valor);$("detFotos").innerHTML=fs.map(f=>`<img src="${f}">`).join("");$("detInfo").innerHTML=`<div><b>Categoria:</b> ${p.categoria||""}</div><div><b>Cidade:</b> ${p.cidade||""}</div><div><b>Bairro:</b> ${p.bairro||""}</div><div><b>Vendedor:</b> ${p.vendedor||""}</div><div><b>WhatsApp:</b> ${fmt(p.whatsapp||"")}</div><div><b>Descrição:</b> ${p.desc||""}</div><div class="expiraBadge">⏳ Expira em ${tempo(p.expiraEm)}</div>`;$("detWhats").href=`https://wa.me/55${clean(p.whatsapp)}?text=${encodeURIComponent("Olá, vi seu anúncio: "+(p.nome||""))}`;$("detailModal").classList.add("show")}
+function render(){let termo=$("busca").value.toLowerCase().trim(),agora=Date.now();let arr=produtos.filter(p=>(!p.expiraEm||typeof p.expiraEm!=="number"||p.expiraEm>agora));if(filtro!="Todos")arr=arr.filter(p=>p.categoria==filtro);if(termo)arr=arr.filter(p=>(p.nome||"").toLowerCase().includes(termo)||(p.cidade||"").toLowerCase().includes(termo)||(p.categoria||"").toLowerCase().includes(termo));if(!arr.length){$("grid").innerHTML='<div class="empty">Nenhum anúncio encontrado.</div>';return}$("grid").innerHTML=arr.map(p=>`<div class="card"><img src="${p.foto||""}"><div class="cardBody"><h3>${p.nome||""}</h3><div class="price">${moeda(p.valor)}</div><div class="meta"><div>Categoria: ${p.categoria||""}</div><div>Cidade: ${p.cidade||""}</div><div>Vendedor: ${p.vendedor||""}</div><div class="expiraBadge" data-expira="${p.expiraEm||0}">⏳ Expira em ${tempo(p.expiraEm)}</div></div><div class="row"><a class="btn green" target="_blank" href="https://wa.me/55${clean(p.whatsapp)}?text=${encodeURIComponent(`Olá, vi seu anúncio na Lojinha Domingrau.\n\n📦 Produto: ${p.nome||""}\n💰 Valor: ${moeda(p.valor)}\n📍 Cidade: ${p.cidade||""}\n🏘️ Bairro: ${p.bairro||""}\n\nO produto ainda está disponível?`)}">WhatsApp</a><button class="btn alt" data-info="${p.id}">Ver informações</button></div></div></div>`).join("");document.querySelectorAll("[data-info]").forEach(b=>b.onclick=()=>detalhes(b.dataset.info))}
+function detalhes(id){let p=produtos.find(x=>x.id==id);if(!p)return;let fs=p.fotos?.length?p.fotos:(p.foto?[p.foto]:[]);$("detNome").textContent=p.nome||"";$("detValor").textContent=moeda(p.valor);$("detFotos").innerHTML=fs.map(f=>`<img src="${f}">`).join("");$("detInfo").innerHTML=`<div><b>Categoria:</b> ${p.categoria||""}</div><div><b>Cidade:</b> ${p.cidade||""}</div><div><b>Bairro:</b> ${p.bairro||""}</div><div><b>Vendedor:</b> ${p.vendedor||""}</div><div><b>WhatsApp:</b> ${fmt(p.whatsapp||"")}</div><div><b>Descrição:</b> ${p.desc||""}</div><div class="expiraBadge">⏳ Expira em ${tempo(p.expiraEm)}</div>`;$("detWhats").href=`https://wa.me/55${clean(p.whatsapp)}?text=${encodeURIComponent(`Olá, vi seu anúncio na Lojinha Domingrau.\n\n📦 Produto: ${p.nome||""}\n💰 Valor: ${moeda(p.valor)}\n📍 Cidade: ${p.cidade||""}\n🏘️ Bairro: ${p.bairro||""}\n\nO produto ainda está disponível?`)}`;$("detailModal").classList.add("show")}
 
 function atualizarCategorias(extras=[]){
  const base=["Todos","Carros","Motos","Celulares","Videogames","Notebooks","Serviços","Peças","Roupas","Outros"];
