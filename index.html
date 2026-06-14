@@ -235,14 +235,27 @@ const clean=v=>String(v||"").replace(/\D/g,"");const sess=()=>{try{return JSON.p
 function fmt(t){t=clean(t);return t.length>=11?`(${t.slice(0,2)}) ${t.slice(2,7)}-${t.slice(7,11)}`:t.length>=10?`(${t.slice(0,2)}) ${t.slice(2,6)}-${t.slice(6,10)}`:t||""}
 function moeda(v){let n=Number(String(v||"0").replace(/\./g,"").replace(",","."));if(isNaN(n))n=0;return n.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}
 function toast(m){$("toast").textContent=m;$("toast").classList.remove("hide");setTimeout(()=>$("toast").classList.add("hide"),2400)}
+
+function getDeviceId(){
+ let id=localStorage.getItem("domingrauDeviceId");
+ if(!id){
+   id="DEV-"+Math.random().toString(36).slice(2)+Date.now();
+   localStorage.setItem("domingrauDeviceId",id);
+ }
+ return id;
+}
+
 function topo(){const u=sess();$("logged").textContent=u?.telefone?fmt(u.telefone):"Entrar";$("btnLoginHero").style.display=u?.telefone?"none":"inline-block";if(u?.telefone)$("whatsapp").value=fmt(u.telefone)}
 function maskTel(i){let v=clean(i.value).slice(0,11);i.value=v.length>10?v.replace(/^(\d{2})(\d{5})(\d{4}).*/,"($1) $2-$3"):v.length>6?v.replace(/^(\d{2})(\d{4})(\d{0,4}).*/,"($1) $2-$3"):v.length>2?v.replace(/^(\d{2})(\d{0,5})/,"($1) $2"):v}
 function maskValor(i){let v=clean(i.value);i.value=v?(Number(v)/100).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2}):""}
 function tempo(ms){let d=Math.max(0,Number(ms||0)-Date.now()),dia=Math.floor(d/86400000),h=Math.floor(d%86400000/3600000),m=Math.floor(d%3600000/60000),s=Math.floor(d%60000/1000);return dia>0?`${dia}d ${h}h ${m}m ${s}s`:h>0?`${h}h ${m}m ${s}s`:m>0?`${m}m ${s}s`:`${s}s`}
 async function comprimir(file){return new Promise((res,rej)=>{const img=new Image(),r=new FileReader();r.onload=e=>{img.onload=()=>{let w=img.width,h=img.height,max=900;if(w>h&&w>max){h=Math.round(h*max/w);w=max}else if(h>=w&&h>max){w=Math.round(w*max/h);h=max}let c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(img,0,0,w,h);res(c.toDataURL("image/jpeg",.62))};img.onerror=rej;img.src=e.target.result};r.onerror=rej;r.readAsDataURL(file)})}
 function abrirLogin(){ $("loginModal").classList.add("show");modoLogin()}function fecharLogin(){ $("loginModal").classList.remove("show")}function modoLogin(){criando=false;$("loginTitulo").textContent="Entrar";$("tabEntrar").classList.add("active");$("tabCriar").classList.remove("active");$("btnAcaoLogin").textContent="Entrar";$("loginMsg").innerHTML=""}function modoCriar(){criando=true;$("loginTitulo").textContent="Criar conta";$("tabCriar").classList.add("active");$("tabEntrar").classList.remove("active");$("btnAcaoLogin").textContent="Criar conta";$("loginMsg").innerHTML=""}
-async function criarConta(){const tel=clean($("loginTel").value),senha=$("loginSenha").value.trim();if(tel.length<10)return $("loginMsg").innerHTML='<div class="err">Digite telefone válido.</div>';if(senha.length<5)return $("loginMsg").innerHTML='<div class="err">Senha mínima de 5 caracteres.</div>';try{let ref=doc(db,"usuarios",tel),s=await getDoc(ref);if(s.exists())return $("loginMsg").innerHTML='<div class="err">Esse número já tem conta.</div>';await setDoc(ref,{telefone:tel,senha,bloqueado:false,criadoEm:serverTimestamp()});localStorage.setItem("domingrauCliente",JSON.stringify({telefone:tel}));topo();fecharLogin();toast("Conta criada!")}catch(e){$("loginMsg").innerHTML='<div class="err">Erro no Firebase.</div>'}}
-async function entrar(){if(criando)return criarConta();const tel=clean($("loginTel").value),senha=$("loginSenha").value.trim();if(tel.length<10)return $("loginMsg").innerHTML='<div class="err">Digite telefone válido.</div>';try{let s=await getDoc(doc(db,"usuarios",tel));if(!s.exists())return $("loginMsg").innerHTML='<div class="err">Esse número não tem conta.</div>';if(String(s.data().senha)!==senha)return $("loginMsg").innerHTML='<div class="err">Senha incorreta.<br><button class="btn alt" onclick="window.recuperarSenha()">Redefinir senha</button></div>';localStorage.setItem("domingrauCliente",JSON.stringify({telefone:tel}));topo();fecharLogin();toast("Logado!")}catch(e){$("loginMsg").innerHTML='<div class="err">Erro no Firebase.</div>'}}
+async function criarConta(){const tel=clean($("loginTel").value),senha=$("loginSenha").value.trim();if(tel.length<10)return $("loginMsg").innerHTML='<div class="err">Digite telefone válido.</div>';if(senha.length<5)return $("loginMsg").innerHTML='<div class="err">Senha mínima de 5 caracteres.</div>';try{let ref=doc(db,"usuarios",tel),s=await getDoc(ref);if(s.exists())return $("loginMsg").innerHTML='<div class="err">Esse número já tem conta.</div>';await setDoc(ref,{telefone:tel,senha,bloqueado:false,deviceId:getDeviceId(),criadoEm:serverTimestamp()});await setDoc(doc(db,"usuarios",tel),{deviceId:getDeviceId()},{merge:true});
+localStorage.setItem("domingrauCliente",JSON.stringify({telefone:tel,senha:senha}));topo();monitorarSenha();fecharLogin();toast("Conta criada!")}catch(e){$("loginMsg").innerHTML='<div class="err">Erro no Firebase.</div>'}}
+async function entrar(){if(criando)return criarConta();const tel=clean($("loginTel").value),senha=$("loginSenha").value.trim();if(tel.length<10)return $("loginMsg").innerHTML='<div class="err">Digite telefone válido.</div>';try{let s=await getDoc(doc(db,"usuarios",tel));if(!s.exists())return $("loginMsg").innerHTML='<div class="err">Esse número não tem conta.</div>';if(s.data().deviceId && s.data().deviceId!==getDeviceId()) return $("loginMsg").innerHTML='<div class="err">Esta conta já está logada em outro celular.</div>';
+if(String(s.data().senha)!==senha)return $("loginMsg").innerHTML='<div class="err">Senha incorreta. Entre em contato com o suporte.<br><button class="btn alt" onclick="window.recuperarSenha()">Falar com suporte</button></div>';await setDoc(doc(db,"usuarios",tel),{deviceId:getDeviceId()},{merge:true});
+localStorage.setItem("domingrauCliente",JSON.stringify({telefone:tel,senha:senha}));topo();monitorarSenha();fecharLogin();toast("Logado!")}catch(e){$("loginMsg").innerHTML='<div class="err">Erro no Firebase.</div>'}}
 window.recuperarSenha=()=>{let tel=clean($("loginTel").value||sess()?.telefone||"");window.open("https://wa.me/5515998486563?text="+encodeURIComponent("Olá, preciso recuperar minha senha da Lojinha Domingrau. Meu telefone: "+fmt(tel)),"_blank")}
 function abrirAdd(){let u=sess();if(!u?.telefone)return abrirLogin();$("whatsapp").value=fmt(u.telefone);$("formPanel").classList.remove("hide")}
 function fecharForm(){$("formPanel").classList.add("hide")}
@@ -297,7 +310,42 @@ if(!u?.telefone){
 }
 document.getElementById("contaModal").classList.add("show");
 };$("btnLoginHero").onclick=abrirLogin;$("btnAddHero").onclick=abrirAdd;$("menuAdd").onclick=()=>{$("sideMenu").classList.remove("show");abrirAdd()};$("menuHambBtn").onclick=()=>$("sideMenu").classList.add("show");$("menuVoltar").onclick=()=>$("sideMenu").classList.remove("show");$("menuMeus").onclick=()=>{$("sideMenu").classList.remove("show");meus()};$("menuRecuperar").onclick=recuperarSenha;$("btnBuscar").onclick=render;$("busca").oninput=render;$("btnFiltro").onclick=abrirFiltro;$("btnPublicar").onclick=publicar;$("btnCancelar").onclick=fecharForm;$("tabEntrar").onclick=modoLogin;$("tabCriar").onclick=modoCriar;$("btnAcaoLogin").onclick=entrar;$("btnFecharLogin").onclick=fecharLogin;$("btnEye").onclick=e=>{e.preventDefault();$("loginSenha").type=$("loginSenha").type=="password"?"text":"password"};$("loginTel").oninput=e=>maskTel(e.target);$("valor").oninput=e=>maskValor(e.target);$("fotos").onchange=()=>$("fotoInfo").textContent=$("fotos").files.length+" foto(s) selecionada(s).";$("btnFecharDetalhes").onclick=()=>$("detailModal").classList.remove("show");$("fecharMeus").onclick=()=>$("meusModal").classList.remove("show")}
-bind();topo();
+
+let stopMonitorSenha=null;
+function monitorarSenha(){
+ const s=sess();
+ if(!s?.telefone) return;
+ if(stopMonitorSenha) stopMonitorSenha();
+
+ stopMonitorSenha=onSnapshot(doc(db,"usuarios",s.telefone),(snap)=>{
+   if(!snap.exists()) return;
+   const dados=snap.data();
+   const atual=sess();
+   if(!atual?.telefone) return;
+
+   // Se a sessão antiga não tem senha salva, salva a senha atual do Firebase e continua logado
+   if(!atual.senha && dados.senha){
+     localStorage.setItem("domingrauCliente",JSON.stringify({telefone:atual.telefone,senha:dados.senha}));
+     return;
+   }
+
+   // Se o admin mudou a senha, sai da conta na hora
+   if(dados.senha && atual.senha && String(dados.senha)!==String(atual.senha)){
+     localStorage.removeItem("domingrauCliente");
+     document.body.innerHTML=`
+       <div style="position:fixed;inset:0;background:#07070b;display:flex;align-items:center;justify-content:center;padding:20px;z-index:999999;color:white;font-family:Arial">
+        <div style="background:#141421;border:1px solid #39344f;border-radius:28px;padding:28px;max-width:520px;width:100%;text-align:center;box-shadow:0 0 40px #8b35ff33">
+          <h2 style="font-size:34px;margin:0 0 12px;color:#ef4444">Sessão encerrada</h2>
+          <p style="font-size:18px;color:#c5bfd1;line-height:1.4">Sua senha foi alterada pelo administrador.</p>
+          <p style="font-size:18px;color:#c5bfd1;line-height:1.4">Entre novamente com a nova senha. Se errar, entre em contato com o suporte.</p>
+          <button onclick="location.reload()" style="background:linear-gradient(135deg,#8b35ff,#ca55ff);color:white;border:0;border-radius:18px;padding:15px 22px;font-weight:900;font-size:16px">Entrar novamente</button>
+        </div>
+       </div>`;
+   }
+ },err=>console.log("Erro monitor senha:",err));
+}
+
+bind();topo();monitorarSenha();
 
 onSnapshot(collection(db,"categorias"),snap=>{
  const extras=snap.docs.map(d=>d.data().nome).filter(Boolean).sort((a,b)=>String(a).localeCompare(String(b)));
